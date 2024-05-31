@@ -31,12 +31,29 @@ async function run() {
   try {
 
     const districtCollection = client.db("bloodDonationDB").collection("district");
+    const upazilaCollection = client.db("bloodDonationDB").collection("upazila");
 
     // Get all the district
-    app.get('/districts', async(req, res)=>{
-      const result = await districtCollection.find().toArray()
-      res.send(result)
-    })
+    app.get('/districts', async (req, res) => {
+      try {
+          const result = await districtCollection.find().sort({ name: 1 }).toArray();
+          res.send(result);
+      } catch (error) {
+          console.error("Error fetching districts:", error);
+          res.status(500).send("Internal Server Error");
+      }
+  });
+
+    // Get all the upazila
+    app.get('/upazilas', async (req, res) => {
+      try {
+          const result = await upazilaCollection.find().sort({ name: 1 }).toArray();
+          res.send(result);
+      } catch (error) {
+          console.error("Error fetching districts:", error);
+          res.status(500).send("Internal Server Error");
+      }
+  });
     
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
