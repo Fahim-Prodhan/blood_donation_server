@@ -30,6 +30,13 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
 
+    const districtCollection = client.db("bloodDonationDB").collection("district");
+
+    // Get all the district
+    app.get('/districts', async(req, res)=>{
+      const result = await districtCollection.find().toArray()
+      res.send(result)
+    })
     
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
