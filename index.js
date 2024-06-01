@@ -32,6 +32,7 @@ async function run() {
 
     const districtCollection = client.db("bloodDonationDB").collection("district");
     const upazilaCollection = client.db("bloodDonationDB").collection("upazila");
+    const usersCollection = client.db("bloodDonationDB").collection("users");
 
     // Get all the district
     app.get('/districts', async (req, res) => {
@@ -54,6 +55,13 @@ async function run() {
           res.status(500).send("Internal Server Error");
       }
   });
+
+  // create new user
+  app.post('/users', async(req, res)=>{
+    const userDate = req.body
+    const result = await usersCollection.insertOne(userDate)
+    res.send(result)
+  })
     
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
