@@ -33,6 +33,7 @@ async function run() {
     const districtCollection = client.db("bloodDonationDB").collection("district");
     const upazilaCollection = client.db("bloodDonationDB").collection("upazila");
     const usersCollection = client.db("bloodDonationDB").collection("users");
+    const donationRequestCollection = client.db("bloodDonationDB").collection("donationRequests");
 
     // Get all the district
     app.get('/districts', async (req, res) => {
@@ -82,6 +83,13 @@ async function run() {
       $set:data
     }
     const result = await usersCollection.updateOne(query, updateDoc);
+    res.send(result)
+  })
+
+  // create donation request
+  app.post('/create-donation-request',async(req,res)=>{
+    const data = req.body;
+    const result = await donationRequestCollection.insertOne(data)
     res.send(result)
   })
     
