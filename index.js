@@ -67,8 +67,21 @@ async function run() {
   app.get('/users', async(req,res)=>{
     const email = req.query.email;
     const query = {email: email}
-    console.log(email);
+    // console.log(email);
     const result = await usersCollection.findOne(query)
+    res.send(result)
+  })
+
+  // update user
+  app.patch('/users/:email', async(req, res)=>{
+    const data = req.body
+    const email = req.params.email
+    const query = {email: email}
+    console.log(data);
+    const updateDoc = {
+      $set:data
+    }
+    const result = await usersCollection.updateOne(query, updateDoc);
     res.send(result)
   })
     
