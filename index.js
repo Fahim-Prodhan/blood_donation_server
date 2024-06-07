@@ -64,6 +64,13 @@ async function run() {
     res.send(result)
   })
 
+  // get users
+  app.get('/users', async(req, res)=>{
+    const result = await usersCollection.find().toArray()
+    res.send(result)
+  })
+
+
   // get user with email
   app.get('/users', async(req,res)=>{
     const email = req.query.email;
@@ -99,6 +106,35 @@ async function run() {
     const query = {email:email}
     const result = await donationRequestCollection.find(query).sort({_id: -1}).toArray()
     res.send(result)
+  })
+
+  // get all donation req
+  app.get('/all-blood-donation-request', async(req,res)=>{
+    const result = await donationRequestCollection.find().sort({_id: -1 }).toArray();
+    res.send(result)
+  })
+
+  // get donation req with id
+  app.get('/my-donation-request/:id', async(req,res)=>{
+    const id = req.params.id
+    const query = {_id: new ObjectId(id)}
+    const result = await donationRequestCollection.findOne(query)
+    res.send(result)
+
+  })
+
+  // update donation req 
+  app.patch('/update-donation-request/:id', async(req,res)=>{
+    const updateData = req.body
+    const id = req.params.id
+
+    const filter = {_id: new ObjectId(id)}
+    const updateDoc = {
+      $set: updateData
+    }
+    const result = await donationRequestCollection.updateOne(filter, updateDoc)
+    res.send(result)
+    
   })
     
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
