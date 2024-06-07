@@ -134,8 +134,16 @@ async function run() {
     }
     const result = await donationRequestCollection.updateOne(filter, updateDoc)
     res.send(result)
-    
+
   })
+
+  // delete donation req
+  app.delete('/my-donation-request/:id', async(req,res)=>{
+    const id = req.params.id
+    const query = {_id: new ObjectId(id)}
+    const result = await donationRequestCollection.deleteOne(query)
+    res.send(result)
+  } )
     
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
