@@ -14,8 +14,6 @@ app.use(
 );
 app.use(express.json());
 
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.djweinm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -24,135 +22,181 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
   try {
-
-    const districtCollection = client.db("bloodDonationDB").collection("district");
-    const upazilaCollection = client.db("bloodDonationDB").collection("upazila");
+    const districtCollection = client
+      .db("bloodDonationDB")
+      .collection("district");
+    const upazilaCollection = client
+      .db("bloodDonationDB")
+      .collection("upazila");
     const usersCollection = client.db("bloodDonationDB").collection("users");
-    const donationRequestCollection = client.db("bloodDonationDB").collection("donationRequests");
+    const donationRequestCollection = client
+      .db("bloodDonationDB")
+      .collection("donationRequests");
 
     // Get all the district
-    app.get('/districts', async (req, res) => {
+    app.get("/districts", async (req, res) => {
       try {
-          const result = await districtCollection.find().sort({ name: 1 }).toArray();
-          res.send(result);
+        const result = await districtCollection
+          .find()
+          .sort({ name: 1 })
+          .toArray();
+        res.send(result);
       } catch (error) {
-          console.error("Error fetching districts:", error);
-          res.status(500).send("Internal Server Error");
+        console.error("Error fetching districts:", error);
+        res.status(500).send("Internal Server Error");
       }
-  });
+    });
 
     // Get all the upazila
-    app.get('/upazilas', async (req, res) => {
+    app.get("/upazilas", async (req, res) => {
       try {
-          const result = await upazilaCollection.find().sort({ name: 1 }).toArray();
-          res.send(result);
+        const result = await upazilaCollection
+          .find()
+          .sort({ name: 1 })
+          .toArray();
+        res.send(result);
       } catch (error) {
-          console.error("Error fetching districts:", error);
-          res.status(500).send("Internal Server Error");
+        console.error("Error fetching districts:", error);
+        res.status(500).send("Internal Server Error");
       }
-  });
+    });
 
-  // create new user
-  app.post('/users', async(req, res)=>{
-    const userDate = req.body
-    const result = await usersCollection.insertOne(userDate)
-    res.send(result)
-  })
+    // create new user
+    app.post("/users", async (req, res) => {
+      const userDate = req.body;
+      const result = await usersCollection.insertOne(userDate);
+      res.send(result);
+    });
 
-  // get users
-  app.get('/users', async(req, res)=>{
-    const result = await usersCollection.find().toArray()
-    res.send(result)
-  })
+    // get users
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
+    // get user with email
+    app.get("/users", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      // console.log(email);
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
 
-  // get user with email
-  app.get('/users', async(req,res)=>{
-    const email = req.query.email;
-    const query = {email: email}
-    // console.log(email);
-    const result = await usersCollection.findOne(query)
-    res.send(result)
-  })
+    // update user
+    app.patch("/users/:email", async (req, res) => {
+      const data = req.body;
+      const email = req.params.email;
+      const query = { email: email };
+      console.log(data);
+      const updateDoc = {
+        $set: data,
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
-  // update user
-  app.patch('/users/:email', async(req, res)=>{
-    const data = req.body
-    const email = req.params.email
-    const query = {email: email}
-    console.log(data);
-    const updateDoc = {
-      $set:data
-    }
-    const result = await usersCollection.updateOne(query, updateDoc);
-    res.send(result)
-  })
+    // create donation request
+    app.post("/create-donation-request", async (req, res) => {
+      const data = req.body;
+      const result = await donationRequestCollection.insertOne(data);
+      res.send(result);
+    });
 
-  // create donation request
-  app.post('/create-donation-request',async(req,res)=>{
-    const data = req.body;
-    const result = await donationRequestCollection.insertOne(data)
-    res.send(result)
-  })
-    
-  // get current user donation request
-  app.get('/my-donation-request',async(req,res)=>{
-    const email = req.query.email
-    const query = {email:email}
-    const result = await donationRequestCollection.find(query).sort({_id: -1}).toArray()
-    res.send(result)
-  })
+    // get current user donation request
+    app.get("/my-donation-request", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await donationRequestCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .toArray();
+      res.send(result);
+    });
 
-  // get all donation req
-  app.get('/all-blood-donation-request', async(req,res)=>{
-    const result = await donationRequestCollection.find().sort({_id: -1 }).toArray();
-    res.send(result)
-  })
+    // get all donation req
+    app.get("/all-blood-donation-request", async (req, res) => {
+      const result = await donationRequestCollection
+        .find()
+        .sort({ _id: -1 })
+        .toArray();
+      res.send(result);
+    });
 
-  // get donation req with id
-  app.get('/my-donation-request/:id', async(req,res)=>{
-    const id = req.params.id
-    const query = {_id: new ObjectId(id)}
-    const result = await donationRequestCollection.findOne(query)
-    res.send(result)
+    // get donation req with id
+    app.get("/my-donation-request/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.findOne(query);
+      res.send(result);
+    });
 
-  })
+    // update donation req
+    app.patch("/update-donation-request/:id", async (req, res) => {
+      const updateData = req.body;
+      const id = req.params.id;
 
-  // update donation req 
-  app.patch('/update-donation-request/:id', async(req,res)=>{
-    const updateData = req.body
-    const id = req.params.id
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updateData,
+      };
+      const result = await donationRequestCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
 
-    const filter = {_id: new ObjectId(id)}
-    const updateDoc = {
-      $set: updateData
-    }
-    const result = await donationRequestCollection.updateOne(filter, updateDoc)
-    res.send(result)
+    // update donation req after donate done
+    app.patch("/update-donation-request-done/:id", async (req, res) => {
+      const updateData = req.body.formData;
+      const id = req.params.id;
 
-  })
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          donorName: updateData.donorName,
+          donorEmail: updateData.donorEmail,
+          status: "inprogress",
+        },
+      };
 
-  // delete donation req
-  app.delete('/my-donation-request/:id', async(req,res)=>{
-    const id = req.params.id
-    const query = {_id: new ObjectId(id)}
-    const result = await donationRequestCollection.deleteOne(query)
-    res.send(result)
-  } )
-    
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+      const options = { upsert: false };
+
+      try {
+        const result = await donationRequestCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Failed to update donation request", error });
+      }
+    });
+
+    // delete donation req
+    app.delete("/my-donation-request/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
-   
   }
 }
 run().catch(console.dir);
-
-
 
 app.get("/", async (req, res) => {
   res.send("Testing Server");
