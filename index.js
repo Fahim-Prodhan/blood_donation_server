@@ -37,6 +37,9 @@ async function run() {
     const donationRequestCollection = client
       .db("bloodDonationDB")
       .collection("donationRequests");
+    const blogCollection = client
+      .db("bloodDonationDB")
+      .collection("blogs");
 
     // Get all the district
     app.get("/districts", async (req, res) => {
@@ -189,6 +192,13 @@ async function run() {
       const result = await donationRequestCollection.deleteOne(query);
       res.send(result);
     });
+
+    //post blog
+    app.post('/posts', async(req,res)=>{
+      const postData = req.body;
+      const result = await blogCollection.insertOne(postData)
+      res.send(result)
+    })
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
