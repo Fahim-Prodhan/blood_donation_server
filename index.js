@@ -200,6 +200,12 @@ async function run() {
       res.send(result)
     })
 
+    //get blog
+    app.get('/posts', async(req,res)=>{
+      const result = await blogCollection.find().sort({_id: -1}).toArray()
+      res.send(result)
+    })
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
