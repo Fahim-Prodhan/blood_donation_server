@@ -37,9 +37,7 @@ async function run() {
     const donationRequestCollection = client
       .db("bloodDonationDB")
       .collection("donationRequests");
-    const blogCollection = client
-      .db("bloodDonationDB")
-      .collection("blogs");
+    const blogCollection = client.db("bloodDonationDB").collection("blogs");
 
     // Get all the district
     app.get("/districts", async (req, res) => {
@@ -194,25 +192,33 @@ async function run() {
     });
 
     //post blog
-    app.post('/posts', async(req,res)=>{
+    app.post("/posts", async (req, res) => {
       const postData = req.body;
-      const result = await blogCollection.insertOne(postData)
-      res.send(result)
-    })
+      const result = await blogCollection.insertOne(postData);
+      res.send(result);
+    });
 
     //get blog
-    app.get('/posts', async(req,res)=>{
-      const result = await blogCollection.find().sort({_id: -1}).toArray()
-      res.send(result)
-    })
+    app.get("/posts", async (req, res) => {
+      const result = await blogCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    });
 
     // delete blog
-    app.delete('/posts/:id', async(req, res)=>{
+    app.delete("/posts/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await blogCollection.deleteOne(query)
-      res.send(result)
-    })
+      const query = { _id: new ObjectId(id) };
+      const result = await blogCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // get blog with id
+    app.get("/posts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await blogCollection.findOne(query);
+      res.send(result);
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
