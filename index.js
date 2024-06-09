@@ -220,6 +220,23 @@ async function run() {
       res.send(result);
     });
 
+    // update blog
+    app.patch("/update-blog/:id", async (req, res) => {
+      const updateData = req.body;
+      const id = req.params.id;
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updateData,
+      };
+      const result = await blogCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+    
+
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
