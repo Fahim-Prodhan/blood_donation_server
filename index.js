@@ -74,10 +74,32 @@ async function run() {
       res.send(result);
     });
 
-    // get users
+    // Get users with pagination and filtering
     app.get("/users", async (req, res) => {
-      const result = await usersCollection.find().toArray();
-      res.send(result);
+      try {
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 10;
+        const status = req.query.status;
+        const query = status ? { IsActive: status } : {};
+
+        const result = await usersCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .sort({ _id: -1 })
+          .toArray();
+
+        const totalCount = await usersCollection.countDocuments(query);
+
+        res.send({
+          users: result,
+          totalCount,
+        });
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the users" });
+      }
     });
 
     // get user with email
@@ -94,7 +116,20 @@ async function run() {
       const data = req.body;
       const email = req.params.email;
       const query = { email: email };
-      console.log(data);
+      // console.log(data);
+      const updateDoc = {
+        $set: data,
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    // update user status
+    app.patch("/users/updateStatus/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
+
       const updateDoc = {
         $set: data,
       };
@@ -229,13 +264,10 @@ async function run() {
       const updateDoc = {
         $set: updateData,
       };
-      const result = await blogCollection.updateOne(
-        filter,
-        updateDoc
-      );
+      const result = await blogCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
-    
+
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
