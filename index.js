@@ -235,7 +235,9 @@ async function run() {
 
     //get blog
     app.get("/posts", async (req, res) => {
-      const result = await blogCollection.find().sort({ _id: -1 }).toArray();
+      const status = req.query.status;
+      const query = status ? {status: status} : {}
+      const result = await blogCollection.find(query).sort({ _id: -1 }).toArray();
       res.send(result);
     });
 
