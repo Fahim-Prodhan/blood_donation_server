@@ -268,6 +268,22 @@ async function run() {
       res.send(result);
     });
 
+    // update user status
+    app.patch("/blogs/updateStatus/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
+
+      const updateDoc = {
+        $set: data,
+      };
+      const result = await blogCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+
+
+
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
