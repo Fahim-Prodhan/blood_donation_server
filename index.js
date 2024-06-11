@@ -4,6 +4,7 @@ require("dotenv").config();
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // middleware
 app.use(
@@ -38,6 +39,7 @@ async function run() {
       .db("bloodDonationDB")
       .collection("donationRequests");
     const blogCollection = client.db("bloodDonationDB").collection("blogs");
+    const paymentCollection = client.db("bloodDonationDB").collection("payments");
 
     // Get all the district
     app.get("/districts", async (req, res) => {
@@ -150,11 +152,11 @@ async function run() {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
         const email = req.query.email;
-        const status = req.query.status
+        const status = req.query.status;
         const query = {};
 
-        if(email) query.email = email;
-        if(status) query.status = status;
+        if (email) query.email = email;
+        if (status) query.status = status;
 
         const result = await donationRequestCollection
           .find(query)
@@ -163,7 +165,9 @@ async function run() {
           .sort({ _id: -1 })
           .toArray();
 
-        const totalCount = await donationRequestCollection.countDocuments(query);
+        const totalCount = await donationRequestCollection.countDocuments(
+          query
+        );
 
         res.send({
           donationsReq: result,
@@ -181,10 +185,10 @@ async function run() {
       try {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
-        const status = req.query.status
+        const status = req.query.status;
         const query = {};
 
-        if(status) query.status = status;
+        if (status) query.status = status;
 
         const result = await donationRequestCollection
           .find(query)
@@ -193,7 +197,9 @@ async function run() {
           .sort({ _id: -1 })
           .toArray();
 
-        const totalCount = await donationRequestCollection.countDocuments(query);
+        const totalCount = await donationRequestCollection.countDocuments(
+          query
+        );
 
         res.send({
           allDonations: result,
@@ -207,11 +213,11 @@ async function run() {
     });
 
     // get all donation req for public
-    app.get('/all-donation-request-public', async(req,res)=>{
-      const query = {status: 'pending'}
-      const result = await donationRequestCollection.find(query).toArray()
-      res.send(result)
-    })
+    app.get("/all-donation-request-public", async (req, res) => {
+      const query = { status: "pending" };
+      const result = await donationRequestCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // get donation req with id
     app.get("/my-donation-request/:id", async (req, res) => {
@@ -267,19 +273,21 @@ async function run() {
       }
     });
 
-
     // after inprogress update status
-    app.patch('/my-donation-request/updateStatus/:id', async(req,res)=>{
-      const id = req.params.id
-      const query = {_id: new ObjectId(id)}
-      const data = req.body
+    app.patch("/my-donation-request/updateStatus/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
 
       const updateDoc = {
-        $set: data
-      }
-      const result = await donationRequestCollection.updateOne(query, updateDoc)
-      res.send(result)
-    })
+        $set: data,
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
+    });
 
     // delete donation req
     app.delete("/my-donation-request/:id", async (req, res) => {
@@ -287,6 +295,28 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.deleteOne(query);
       res.send(result);
+    });
+
+    // Search Donation Req
+    app.get("/search", async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+
+      const query = {
+        bloodGroup,
+        district,
+        upazila,
+        role: "donor",
+      };
+
+      console.log(query);
+
+      try {
+        const result = await usersCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching donor:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
     });
 
     //post blog
@@ -299,8 +329,11 @@ async function run() {
     //get blog
     app.get("/posts", async (req, res) => {
       const status = req.query.status;
-      const query = status ? {status: status} : {}
-      const result = await blogCollection.find(query).sort({ _id: -1 }).toArray();
+      const query = status ? { status: status } : {};
+      const result = await blogCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
     });
 
@@ -317,6 +350,13 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await blogCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get all public blogs
+    app.get("/public-blogs", async (req, res) => {
+      const query = { status: "published" };
+      const result = await blogCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -346,9 +386,28 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: [
+          "card"
+        ],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    });
 
 
-
+    app.post('/payment', async(req, res)=>{
+      const payment = req.body
+      const result = await paymentCollection.insertOne(payment)
+      res.send(result)
+    })
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
