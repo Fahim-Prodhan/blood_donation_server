@@ -150,7 +150,11 @@ async function run() {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
         const email = req.query.email;
-        const query = { email: email };
+        const status = req.query.status
+        const query = {};
+
+        if(email) query.email = email;
+        if(status) query.status = status;
 
         const result = await donationRequestCollection
           .find(query)
