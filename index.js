@@ -103,7 +103,7 @@ async function run() {
     });
 
     // get user with email
-    app.get("/users", async (req, res) => {
+    app.get("/currentUsers", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       // console.log(email);
@@ -146,13 +146,30 @@ async function run() {
 
     // get current user donation request
     app.get("/my-donation-request", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const result = await donationRequestCollection
-        .find(query)
-        .sort({ _id: -1 })
-        .toArray();
-      res.send(result);
+      try {
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 10;
+        const email = req.query.email;
+        const query = { email: email };
+
+        const result = await donationRequestCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .sort({ _id: -1 })
+          .toArray();
+
+        const totalCount = await donationRequestCollection.countDocuments(query);
+
+        res.send({
+          donationsReq: result,
+          totalCount,
+        });
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the users" });
+      }
     });
 
     // get all donation req
@@ -217,6 +234,20 @@ async function run() {
           .send({ message: "Failed to update donation request", error });
       }
     });
+
+
+    // after inprogress update status
+    app.patch('/my-donation-request/updateStatus/:id', async(req,res)=>{
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const data = req.body
+
+      const updateDoc = {
+        $set: data
+      }
+      const result = await donationRequestCollection.updateOne(query, updateDoc)
+      res.send(result)
+    })
 
     // delete donation req
     app.delete("/my-donation-request/:id", async (req, res) => {
