@@ -178,12 +178,40 @@ async function run() {
 
     // get all donation req
     app.get("/all-blood-donation-request", async (req, res) => {
-      const result = await donationRequestCollection
-        .find()
-        .sort({ _id: -1 })
-        .toArray();
-      res.send(result);
+      try {
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 10;
+        const status = req.query.status
+        const query = {};
+
+        if(status) query.status = status;
+
+        const result = await donationRequestCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .sort({ _id: -1 })
+          .toArray();
+
+        const totalCount = await donationRequestCollection.countDocuments(query);
+
+        res.send({
+          allDonations: result,
+          totalCount,
+        });
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the users" });
+      }
     });
+
+    // get all donation req for public
+    app.get('/all-donation-request-public', async(req,res)=>{
+      const query = {status: 'pending'}
+      const result = await donationRequestCollection.find(query).toArray()
+      res.send(result)
+    })
 
     // get donation req with id
     app.get("/my-donation-request/:id", async (req, res) => {
