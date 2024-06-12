@@ -5,7 +5,7 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 5000;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
+const jwt = require('jsonwebtoken');
 // middleware
 app.use(
   cors({
@@ -40,6 +40,58 @@ async function run() {
       .collection("donationRequests");
     const blogCollection = client.db("bloodDonationDB").collection("blogs");
     const paymentCollection = client.db("bloodDonationDB").collection("payments");
+
+    // jwt
+    app.post('/jwt',async(req,res)=>{
+      const user = req.body;
+      const token = jwt.sign(user, process.env.SECRET_KEY,{expiresIn:'1h'})
+      res.send({token:token})
+    })
+
+    // middlewares
+    const verifyToken = (req,res,next)=>{
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'unauthorize access'})
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      // console.log(token);
+      jwt.verify(token,process.env.SECRET_KEY, (err, decoded)=>{
+        if(err){
+          return res.status(401).send({message: 'unauthorize access'})
+        }
+        req.decoded = decoded
+        next()
+      })
+    }
+
+    const verifyAdmin = async(req,res,next)=>{
+      const email = req.decoded.email;
+      const query = {email:email}
+      const user = await usersCollection.findOne(query)
+
+      const isAdmin = user?.role === 'admin'
+      if(!isAdmin){
+        return res.status(403).send({message: 'forbidden access'})
+      }
+      next();
+    }
+
+    const verifyAdminOrVolunteer = async (req, res, next) => {
+      try {
+        const email = req.decoded.email;
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+    
+        const allowedRoles = ['admin', 'volunteer'];
+        if (!user || !allowedRoles.includes(user.role)) {
+          return res.status(403).send({ message: 'forbidden access' });
+        }
+    
+        next();
+      } catch (error) {
+        return res.status(500).send({ message: 'Internal Server Error' });
+      }
+    };
 
     // Get all the district
     app.get("/districts", async (req, res) => {
@@ -77,7 +129,7 @@ async function run() {
     });
 
     // Get users with pagination and filtering
-    app.get("/users", async (req, res) => {
+    app.get("/users",verifyToken, verifyAdmin, async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
@@ -105,7 +157,7 @@ async function run() {
     });
 
     // get user with email
-    app.get("/currentUsers", async (req, res) => {
+    app.get("/currentUsers", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       // console.log(email);
@@ -114,7 +166,7 @@ async function run() {
     });
 
     // update user
-    app.patch("/users/:email", async (req, res) => {
+    app.patch("/users/:email", verifyToken, async (req, res) => {
       const data = req.body;
       const email = req.params.email;
       const query = { email: email };
@@ -127,7 +179,7 @@ async function run() {
     });
 
     // update user status
-    app.patch("/users/updateStatus/:id", async (req, res) => {
+    app.patch("/users/updateStatus/:id",verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const data = req.body;
@@ -140,14 +192,14 @@ async function run() {
     });
 
     // create donation request
-    app.post("/create-donation-request", async (req, res) => {
+    app.post("/create-donation-request", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await donationRequestCollection.insertOne(data);
       res.send(result);
     });
 
     // get current user donation request
-    app.get("/my-donation-request", async (req, res) => {
+    app.get("/my-donation-request",verifyToken, async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
@@ -181,7 +233,7 @@ async function run() {
     });
 
     // get all donation req
-    app.get("/all-blood-donation-request", async (req, res) => {
+    app.get("/all-blood-donation-request",verifyToken, verifyAdminOrVolunteer, async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 0;
         const size = parseInt(req.query.size) || 10;
@@ -220,7 +272,7 @@ async function run() {
     });
 
     // get donation req with id
-    app.get("/my-donation-request/:id", async (req, res) => {
+    app.get("/my-donation-request/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.findOne(query);
@@ -228,7 +280,7 @@ async function run() {
     });
 
     // update donation req
-    app.patch("/update-donation-request/:id", async (req, res) => {
+    app.patch("/update-donation-request/:id", verifyToken, async (req, res) => {
       const updateData = req.body;
       const id = req.params.id;
 
@@ -244,7 +296,7 @@ async function run() {
     });
 
     // update donation req after donate done
-    app.patch("/update-donation-request-done/:id", async (req, res) => {
+    app.patch("/update-donation-request-done/:id", verifyToken, async (req, res) => {
       const updateData = req.body.formData;
       const id = req.params.id;
 
@@ -274,7 +326,7 @@ async function run() {
     });
 
     // after inprogress update status
-    app.patch("/my-donation-request/updateStatus/:id", async (req, res) => {
+    app.patch("/my-donation-request/updateStatus/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const data = req.body;
@@ -289,8 +341,26 @@ async function run() {
       res.send(result);
     });
 
+    // update donation status admin and volunteer status
+    app.patch("/donation-request/updateStatus/:id",verifyToken, verifyAdminOrVolunteer, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
+
+      const updateDoc = {
+        $set: data,
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
+    });
+
+  
+
     // delete donation req
-    app.delete("/my-donation-request/:id", async (req, res) => {
+    app.delete("/my-donation-request/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.deleteOne(query);
@@ -320,14 +390,14 @@ async function run() {
     });
 
     //post blog
-    app.post("/posts", async (req, res) => {
+    app.post("/posts", verifyToken, verifyAdminOrVolunteer, async (req, res) => {
       const postData = req.body;
       const result = await blogCollection.insertOne(postData);
       res.send(result);
     });
 
     //get blog
-    app.get("/posts", async (req, res) => {
+    app.get("/posts", verifyToken , verifyAdminOrVolunteer, async (req, res) => {
       const status = req.query.status;
       const query = status ? { status: status } : {};
       const result = await blogCollection
@@ -338,7 +408,7 @@ async function run() {
     });
 
     // delete blog
-    app.delete("/posts/:id", async (req, res) => {
+    app.delete("/posts/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await blogCollection.deleteOne(query);
@@ -361,7 +431,7 @@ async function run() {
     });
 
     // update blog
-    app.patch("/update-blog/:id", async (req, res) => {
+    app.patch("/update-blog/:id", verifyToken, verifyAdminOrVolunteer, async (req, res) => {
       const updateData = req.body;
       const id = req.params.id;
 
@@ -373,8 +443,8 @@ async function run() {
       res.send(result);
     });
 
-    // update user status
-    app.patch("/blogs/updateStatus/:id", async (req, res) => {
+    // update blogs status
+    app.patch("/blogs/updateStatus/:id", verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const data = req.body;
@@ -408,6 +478,51 @@ async function run() {
       const result = await paymentCollection.insertOne(payment)
       res.send(result)
     })
+
+    app.get('/allFunding', verifyToken, async(req, res)=>{
+      try {
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 10;
+
+        const result = await paymentCollection
+          .find()
+          .skip(page * size)
+          .limit(size)
+          .sort({ _id: -1 })
+          .toArray();
+
+        const totalCount = await paymentCollection.countDocuments();
+
+        res.send({
+          allFunds: result,
+          totalCount,
+        });
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the users" });
+      }
+    })
+
+    app.get('/total-users', async (req, res) => {
+      try {
+        const result = await usersCollection.countDocuments();
+        res.send({ totalUsers: result });
+      } catch (error) {
+        console.error('Error counting documents:', error);
+        res.status(500).send('Internal Server Error');
+      }
+    });
+
+    app.get('/total-donation-req', async (req, res) => {
+      try {
+        const result = await donationRequestCollection.countDocuments();
+        res.send({ total: result });
+      } catch (error) {
+        console.error('Error counting documents:', error);
+        res.status(500).send('Internal Server Error');
+      }
+    });
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
