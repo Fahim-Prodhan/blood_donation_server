@@ -7,9 +7,10 @@ const port = process.env.PORT || 5000;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const jwt = require('jsonwebtoken');
 // middleware
+// middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173","https://blood-donation-e615e.web.app"],
     credentials: true,
   })
 );
